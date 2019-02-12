@@ -3,12 +3,18 @@ package okhttp3.sample;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 import com.squareup.moshi.Types;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okhttp3.sample.interceptor.EasyInterceptor;
+import okhttp3.sample.interceptor.EasyInterceptorA;
+import okhttp3.sample.interceptor.EasyInterceptorB;
+import okhttp3.sample.interceptor.EasyInterceptorChainImpl;
 
 public class OkHttpContributors {
   private static final String ENDPOINT = "https://api.github.com/repos/square/okhttp/contributors";
@@ -47,5 +53,17 @@ public class OkHttpContributors {
 
   private OkHttpContributors() {
     // No instances.
+  }
+
+  /**
+   * 简易的拦截器模式。
+   */
+  private static void testInterceptor() {
+    List<EasyInterceptor> interceptors = new ArrayList<>();
+    interceptors.add(new EasyInterceptorA());
+    interceptors.add(new EasyInterceptorB());
+    okhttp3.sample.interceptor.Request request = new okhttp3.sample.interceptor.Request();
+    EasyInterceptorChainImpl chain = new EasyInterceptorChainImpl(interceptors, request, 0);
+    okhttp3.sample.interceptor.Response response = chain.proceed(request);
   }
 }

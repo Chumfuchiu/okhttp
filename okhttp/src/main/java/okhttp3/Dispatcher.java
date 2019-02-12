@@ -179,6 +179,19 @@ public final class Dispatcher {
    *
    * @return true if the dispatcher is currently running calls.
    */
+  /**
+   * promoteAndExecute的意思是 ：提升和执行，该方法在每一次同步请求execute获取到response后以及
+   * RealCall.enqueue方法执行时都会调用。目的是将处于readyAsyncCalls中的异步Call添加到
+   * runningAsyncCalls中，即将异步Call从等待队列中移动到执行队列中，表示该Call已经正在执行。
+   * 实际上线程并不会直接与runningAsyncCalls做交互，runningAsyncCalls只起到了一个记录作用，处于
+   * 该队列中的异步Call均处于运行状态，当一个Call执行完毕后它就会从runningAsyncCalls中移除。
+   *
+   * promoteAndExecute的每一次执行，在满足最大并发(默认64)以及同主机最大并发(默认5)都会将从等待
+   * 队列中取出异步Call并添加到一个临时的ArrayList和runningAsyncCalls队列中。随后遍历ArrayList
+   * 执行ArrayList里的AsyncCall(实质是Runnable),遍历完成后ArrayList的使命就结束了。当一个异步Call
+   * 得到Response或者失败后(不论成功与否)该异步Call会从runningAsyncCalls中移除，表明执行完毕。
+   * @return
+   */
   private boolean promoteAndExecute() {
     assert (!Thread.holdsLock(this));
 

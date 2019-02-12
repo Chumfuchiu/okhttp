@@ -38,6 +38,12 @@ import okio.Timeout;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static okhttp3.internal.platform.Platform.INFO;
 
+/**
+ * 二、
+ * 开发者通过调用client.newCall(request)可以得到一个RealCall实例，调用RealCall.execute()/enqueue(callback)
+ * 可以发起同步和异步请求。
+ *
+ */
 final class RealCall implements Call {
   final OkHttpClient client;
   final RetryAndFollowUpInterceptor retryAndFollowUpInterceptor;
@@ -80,7 +86,13 @@ final class RealCall implements Call {
     return originalRequest;
   }
 
+  /**
+   * 三、
+   * @return
+   * @throws IOException
+   */
   @Override public Response execute() throws IOException {
+    //1.标志位executed，用于保护一个Call不被重复执行。
     synchronized (this) {
       if (executed) throw new IllegalStateException("Already Executed");
       executed = true;
@@ -89,7 +101,9 @@ final class RealCall implements Call {
     timeout.enter();
     eventListener.callStart(this);
     try {
+      //2.将一个同步call添加到dispatcher维护的一个名为runningSyncCalls的ArrayDeque中
       client.dispatcher().executed(this);
+      //3.通过一系列的“拦截”处理过程后，得到Response。getResponseWithInterceptorChain()是一个同步的过程。
       Response result = getResponseWithInterceptorChain();
       if (result == null) throw new IOException("Canceled");
       return result;
@@ -98,6 +112,7 @@ final class RealCall implements Call {
       eventListener.callFailed(this, e);
       throw e;
     } finally {
+      //4.通知dispatcher该请求完成，dispatcher会将该Call从runningSyncCalls移除，并执行promoteAndExecute()。
       client.dispatcher().finished(this);
     }
   }
@@ -117,13 +132,22 @@ final class RealCall implements Call {
     retryAndFollowUpInterceptor.setCallStackTrace(callStackTrace);
   }
 
+  /**
+   * 三、
+   * @param responseCallback
+   */
   @Override public void enqueue(Callback responseCallback) {
+    //1.标志位executed，用于保护一个Call不被重复执行。
     synchronized (this) {
       if (executed) throw new IllegalStateException("Already Executed");
       executed = true;
     }
     captureCallStackTrace();
     eventListener.callStart(this);
+    //2.将一个AsyncCall添加到dispatcher维护的一个名为readyAsyncCalls的ArrayDeque中后
+    //执行promoteAndExecute。RealCall.AsyncCall实质是一个内部Runnable类。每一个RealCall.AsyncCall
+    //被线程池执行后，都会执行execute方法(与RealCall.execute并不是同一个方法，但是大体的逻辑是相同的，
+    // 只不过把response放入responseCallback做一个回调而已)。
     client.dispatcher().enqueue(new AsyncCall(responseCallback));
   }
 
@@ -203,6 +227,9 @@ final class RealCall implements Call {
       }
     }
 
+    /**
+     * 注意该execute方法并不是RealCall.execute()方法，该方法继承自NamedRunnable。
+     */
     @Override protected void execute() {
       boolean signalledCallback = false;
       timeout.enter();
@@ -244,6 +271,13 @@ final class RealCall implements Call {
     return originalRequest.url().redact();
   }
 
+  /**
+   * 四、
+   * getResponseWithInterceptorChain是由一种比较新颖的职责链模式实现的，该职责链的简化版
+   * 可以看看EasyInterceptor。
+   * @return
+   * @throws IOException
+   */
   Response getResponseWithInterceptorChain() throws IOException {
     // Build a full stack of interceptors.
     List<Interceptor> interceptors = new ArrayList<>();

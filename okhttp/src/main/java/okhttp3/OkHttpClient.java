@@ -123,6 +123,19 @@ import static okhttp3.internal.Util.checkDuration;
  * <p>OkHttp also uses daemon threads for HTTP/2 connections. These will exit automatically if they
  * remain idle.
  */
+
+/**
+ * 一、
+ * OkHttpClient应该是被共享的，全局唯一的。因为每一个OkHttpClient都有维护着独享的连接池和线程池，
+ * 重用这些线程池和连接池可以有效的减少内存消耗和时延。对于开发者而言，可以通过
+ * client.dispatcher().executorService().shutdown();
+ * client.connectionPool().evictAll();
+ * 来进行线程池和连接池的关闭。
+ * OkHttpClient采用的是Builder设计模式，除了builder相关的Set/Get方法外，但对于开发者而言有用的
+ * 仅仅有两个方法：
+ * newCall():创建一个Call,用于发送HTTP请求
+ * newWebSocket():TODO
+ */
 public class OkHttpClient implements Cloneable, Call.Factory, WebSocket.Factory {
   static final List<Protocol> DEFAULT_PROTOCOLS = Util.immutableList(
       Protocol.HTTP_2, Protocol.HTTP_1_1);
@@ -448,34 +461,35 @@ public class OkHttpClient implements Cloneable, Call.Factory, WebSocket.Factory 
   }
 
   public static final class Builder {
-    Dispatcher dispatcher;
-    @Nullable Proxy proxy;
-    List<Protocol> protocols;
-    List<ConnectionSpec> connectionSpecs;
-    final List<Interceptor> interceptors = new ArrayList<>();
-    final List<Interceptor> networkInterceptors = new ArrayList<>();
-    EventListener.Factory eventListenerFactory;
-    ProxySelector proxySelector;
-    CookieJar cookieJar;
-    @Nullable Cache cache;
-    @Nullable InternalCache internalCache;
-    SocketFactory socketFactory;
-    @Nullable SSLSocketFactory sslSocketFactory;
-    @Nullable CertificateChainCleaner certificateChainCleaner;
-    HostnameVerifier hostnameVerifier;
-    CertificatePinner certificatePinner;
-    Authenticator proxyAuthenticator;
-    Authenticator authenticator;
-    ConnectionPool connectionPool;
-    Dns dns;
-    boolean followSslRedirects;
-    boolean followRedirects;
-    boolean retryOnConnectionFailure;
-    int callTimeout;
-    int connectTimeout;
-    int readTimeout;
-    int writeTimeout;
-    int pingInterval;
+    Dispatcher dispatcher;//调度器
+    @Nullable Proxy proxy;//代理
+    List<Protocol> protocols;//支持的协议，默认支持HTTP/2和HTTP/1.1
+    List<ConnectionSpec> connectionSpecs;//Socket的链接配置，对于Https而言还包括了要使用的TLS版本和密码套件。
+    //默认支持：MODERN_TLS(连接到最新的HTTPS服务器的安全配置)和CLEARTEXT(用于http://开头的URL的非安全配置)
+    final List<Interceptor> interceptors = new ArrayList<>();//应用拦截器，对于一次Http请求而言，每一个拦截器仅仅会调用一次。
+    final List<Interceptor> networkInterceptors = new ArrayList<>();//网络拦截器，关心整个Http请求过程，包括重试和重定向，会调用n次。
+    EventListener.Factory eventListenerFactory;//TODO
+    ProxySelector proxySelector;//代理选择
+    CookieJar cookieJar;//cookie
+    @Nullable Cache cache;//缓存
+    @Nullable InternalCache internalCache;//内部缓存
+    SocketFactory socketFactory;//socket工厂
+    @Nullable SSLSocketFactory sslSocketFactory;//安全套接层socket工厂，用于HTTPS
+    @Nullable CertificateChainCleaner certificateChainCleaner;//验证确认响应证书，适用HTTPS请求连接的主机名。
+    HostnameVerifier hostnameVerifier;//主机名字确认
+    CertificatePinner certificatePinner;//证书链
+    Authenticator proxyAuthenticator;//代理身份验证
+    Authenticator authenticator;//本地身份验证
+    ConnectionPool connectionPool;//连接池
+    Dns dns;//dns解析
+    boolean followSslRedirects;//安全套接层重定向
+    boolean followRedirects;//本地重定向
+    boolean retryOnConnectionFailure;//链接失败重试
+    int callTimeout;//TODO
+    int connectTimeout;//链接超时
+    int readTimeout;//读取超时
+    int writeTimeout;//写入超时
+    int pingInterval;//ping间隔
 
     public Builder() {
       dispatcher = new Dispatcher();
