@@ -58,6 +58,14 @@ import static okhttp3.internal.http.StatusLine.HTTP_TEMP_REDIRECT;
  * This interceptor recovers from failures and follows redirects as necessary. It may throw an
  * {@link IOException} if the call was canceled.
  */
+
+/**
+ * RetryAndFollowUpInterceptor在需要的时候会进行失败请求进行重试或者对重定向进行处理。square经
+ * 过调研后，将最大重定向次数定为20.
+ * 当一个RealCall对象被实例化的时候，一个RetryAndFollowUpInterceptor也被实例化了。
+ * 当一个RetryAndFollowUpInterceptor.intercept()方法被调用时，其重要成员StreamAllocation
+ * 也同时被实例化。
+ */
 public final class RetryAndFollowUpInterceptor implements Interceptor {
   /**
    * How many redirects and auth challenges should we attempt? Chrome follows 21 redirects; Firefox,
@@ -106,7 +114,7 @@ public final class RetryAndFollowUpInterceptor implements Interceptor {
     RealInterceptorChain realChain = (RealInterceptorChain) chain;
     Call call = realChain.call();
     EventListener eventListener = realChain.eventListener();
-
+    //1.实例化StreamAllocation，StreamAllocation的实例化需要三个重要成员：Address\ConnectionPool\RouteSelector
     StreamAllocation streamAllocation = new StreamAllocation(client.connectionPool(),
         createAddress(request.url()), call, eventListener, callStackTrace);
     this.streamAllocation = streamAllocation;
@@ -198,6 +206,7 @@ public final class RetryAndFollowUpInterceptor implements Interceptor {
     SSLSocketFactory sslSocketFactory = null;
     HostnameVerifier hostnameVerifier = null;
     CertificatePinner certificatePinner = null;
+    //由此可见。对于Https请求而言，下面三者都是必须的。
     if (url.isHttps()) {
       sslSocketFactory = client.sslSocketFactory();
       hostnameVerifier = client.hostnameVerifier();

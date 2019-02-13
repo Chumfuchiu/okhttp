@@ -275,26 +275,30 @@ final class RealCall implements Call {
    * 四、
    * getResponseWithInterceptorChain是由一种比较新颖的职责链模式实现的，该职责链的简化版
    * 可以看看EasyInterceptor。
+   * 首先添加的是application的interceptor，然后添加四个系统的interceptor，在添加最终的
+   * CallServerInterceptor之前，添加network interceptor。
+   *
    * @return
    * @throws IOException
    */
   Response getResponseWithInterceptorChain() throws IOException {
     // Build a full stack of interceptors.
     List<Interceptor> interceptors = new ArrayList<>();
-    interceptors.addAll(client.interceptors());
-    interceptors.add(retryAndFollowUpInterceptor);
-    interceptors.add(new BridgeInterceptor(client.cookieJar()));
-    interceptors.add(new CacheInterceptor(client.internalCache()));
-    interceptors.add(new ConnectInterceptor(client));
+    interceptors.addAll(client.interceptors());//用户添加的application Interceptor
+    interceptors.add(retryAndFollowUpInterceptor);//处理失败重试以及重定向
+    interceptors.add(new BridgeInterceptor(client.cookieJar()));//添加一些请求的头部或其他信息，并对返回的Response做一些友好的处理（有一些信息你可能并不需要）
+    //负责把用户构造的请求转换为发送到服务器的请求、把服务器返回的响应转换为用户友好的响应
+    interceptors.add(new CacheInterceptor(client.internalCache()));//负责读取缓存直接返回、更新缓存
+    interceptors.add(new ConnectInterceptor(client));//负责和服务器建立连接
     if (!forWebSocket) {
-      interceptors.addAll(client.networkInterceptors());
+      interceptors.addAll(client.networkInterceptors());//用户的network Interceptor
     }
-    interceptors.add(new CallServerInterceptor(forWebSocket));
+    interceptors.add(new CallServerInterceptor(forWebSocket));//负责向服务器发送请求数据、从服务器读取响应数据
 
     Interceptor.Chain chain = new RealInterceptorChain(interceptors, null, null, null, 0,
         originalRequest, this, eventListener, client.connectTimeoutMillis(),
         client.readTimeoutMillis(), client.writeTimeoutMillis());
 
-    return chain.proceed(originalRequest);
+    return chain.proceed(originalRequest);//开启链时调用。
   }
 }

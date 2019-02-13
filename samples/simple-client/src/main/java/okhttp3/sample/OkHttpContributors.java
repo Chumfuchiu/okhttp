@@ -59,10 +59,13 @@ public class OkHttpContributors {
    * 简易的拦截器模式。
    */
   private static void testInterceptor() {
+    //1.添加Interceptor
     List<EasyInterceptor> interceptors = new ArrayList<>();
     interceptors.add(new EasyInterceptorA());
     interceptors.add(new EasyInterceptorB());
+    //2.添加request
     okhttp3.sample.interceptor.Request request = new okhttp3.sample.interceptor.Request();
+    //3.创建职责链，在proceed方法中进行链时调用。
     EasyInterceptorChainImpl chain = new EasyInterceptorChainImpl(interceptors, request, 0);
     okhttp3.sample.interceptor.Response response = chain.proceed(request);
   }

@@ -34,6 +34,12 @@ import okhttp3.internal.Util;
  *
  * <p>HTTP requests that share the same {@code Address} may also share the same {@link Connection}.
  */
+
+/**
+ * Address是一个地址包装类，包含了三种请求类型的封装以及请求配置信息：1.直连 2.走代理proxy 3.SSL
+ * Address.equalsNonHost()方法用于判断两个Address是不是同一个，该方法在连接池复用时
+ * 具有比较大的作用：两个Address equals的要求是所有的配置信息完全一样(即除了Host)。
+ */
 public final class Address {
   final HttpUrl url;
   final Dns dns;
